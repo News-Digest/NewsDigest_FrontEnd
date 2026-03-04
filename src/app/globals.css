@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  /* Our Custom "Modern News 2.0" Colors */
+  --color-obsidian: #0F172A;
+  --color-paper: #F9FAFB;
+  --color-violet-500: #8B5CF6;
+  --color-violet-600: #7C3AED;
+  --color-violet-700: #6D28D9;
+  
+  /* Map Next.js Google Fonts to Tailwind */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+}
+
+/* Optional: Keep the background clean */
+body {
+  background-color: var(--color-paper);
+  color: var(--color-obsidian);
+}
