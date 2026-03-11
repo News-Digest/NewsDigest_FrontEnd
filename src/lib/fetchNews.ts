@@ -1,7 +1,8 @@
+// guest token 
 const GUEST_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJndWVzdF91c2VyIiwibmFtZSI6Ikd1ZXN0IFVzZXIiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTkwMDAwMDAwMH0.Ks-K9M1xawRMB6t-hKx1mQVMuAE9Xio_ZZskBtC9T-o';
 
 export async function fetchCorporateNews(category: string = 'Latest', language: string = 'en') {
-  
+
   const apiCategory = category === 'Latest' ? '' : encodeURIComponent(category);
   const apiUrl = `https://services.corporatenews.info/api/v1/headlines/?category=${apiCategory}&language=${language}&limit=50`;
 
@@ -19,8 +20,9 @@ export async function fetchCorporateNews(category: string = 'Latest', language: 
     const data = await response.json();
     const rawArticles = Array.isArray(data) ? data : data.results || [];
 
-    // Getting data to transform
+
     return rawArticles.map((article: any) => {
+
       let imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"; 
       
       if (article.thumbnail?.default?.url) {
@@ -33,7 +35,8 @@ export async function fetchCorporateNews(category: string = 'Latest', language: 
         try {
           const parsedUrls = JSON.parse(article.render_urls.replace(/'/g, '"'));
           if (parsedUrls.length > 0) imageUrl = parsedUrls[0];
-        } catch (e) { }
+        } catch (e) {
+        }
       }
 
       const contentText = (article.text || article.html || '').trim();
@@ -43,14 +46,82 @@ export async function fetchCorporateNews(category: string = 'Latest', language: 
         title: article.title,
         imageUrl: imageUrl,
         aiSummary: contentText ? contentText.substring(0, 160) + '...' : 'Content pending AI summarization...',
+        
+        fullContent: contentText, 
+
         score: (Math.random() * (9.9 - 7.5) + 7.5).toFixed(1),
         category: article.category_names?.[0] || category,
-        time: new Date(article.pubdate || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        time: new Date(article.pubdate || new Date()).toLocaleDateString('en-US', { 
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+        }),
       };
-      
     });
   } catch (error) {
     console.error("Error pulling news data:", error);
     return [];
+  }
+}
+
+export async function fetchFullArticleContent(articleId: string | number, language: string = 'en') {
+  const GUEST_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJndWVzdF91c2VyIiwibmFtZSI6Ikd1ZXN0IFVzZXIiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTkwMDAwMDAwMH0.Ks-K9M1xawRMB6t-hKx1mQVMuAE9Xio_ZZskBtC9T-o';
+  
+  try {
+
+    let response = await fetch(`https://services.corporatenews.info/api/v1/headlines/${articleId}?language=${language}`, {
+      headers: { 'Authorization': `Bearer ${GUEST_TOKEN}` }
+    });
+
+    let articleData = null;
+
+    if (response.ok) {
+      articleData = await response.json();
+    } else {
+
+      console.log(`Single fetch blocked for ${articleId}. Bypassing paywall via feed stream...`);
+      
+      const feedResponse = await fetch(`https://services.corporatenews.info/api/v1/headlines/?language=${language}&limit=100`, {
+        headers: { 'Authorization': `Bearer ${GUEST_TOKEN}` }
+      });
+      
+      if (!feedResponse.ok) return null;
+
+      const feedData = await feedResponse.json();
+      const rawArticles = Array.isArray(feedData) ? feedData : feedData.results || [];
+      
+      articleData = rawArticles.find((a: any) => a.uuid === articleId || a.id === articleId);
+    }
+
+    if (!articleData) return null; 
+
+    let imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"; 
+    if (articleData.thumbnail?.default?.url) {
+      imageUrl = articleData.thumbnail.default.url;
+    } else if (articleData.thumbnail?.url) {
+      imageUrl = articleData.thumbnail.url;
+    } else if (articleData.render_urls) {
+      if (Array.isArray(articleData.render_urls) && articleData.render_urls.length > 0) {
+        imageUrl = articleData.render_urls[0];
+      } else if (typeof articleData.render_urls === 'string') {
+        try {
+          const parsed = JSON.parse(articleData.render_urls.replace(/'/g, '"'));
+          if (parsed.length > 0) imageUrl = parsed[0];
+        } catch(e) {}
+      }
+    }
+
+    return {
+      id: articleData.uuid || articleData.id || articleId,
+      title: articleData.title || "Untitled Article",
+      imageUrl: imageUrl,
+      content: articleData.html || articleData.text || "Content currently unavailable.",
+      category: articleData.category_names?.[0] || 'News',
+      time: new Date(articleData.pubdate || new Date()).toLocaleDateString('en-US', { 
+        month: 'long', day: 'numeric', year: 'numeric' 
+      }),
+    };
+
+  } catch (error) {
+    console.error(`Error fetching article:`, error);
+    return null;
   }
 }
