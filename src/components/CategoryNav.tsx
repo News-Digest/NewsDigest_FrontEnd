@@ -1,23 +1,32 @@
 import Link from 'next/link';
 
-export default function CategoryNav({ currentCategory }: { currentCategory: string }) {
-  const categories = ['Technology', 'Health', 'Construction', 'Consumer', 'Manufacturing', 'Retail', 'Science', 'Professional Services', 'Travel'];
+const CATEGORIES = [
+  "Home", "Business", "Health", "Construction", 
+  "Technology", "Finance", "Energy", "Science", 
+  "Retail", "Automotive", "Real Estate"
+];
 
+export default function CategoryNav({ currentCategory }: { currentCategory: string }) {
   return (
-    <nav className="flex gap-6 mb-8 border-b border-gray-200 pb-4 overflow-x-auto">
-      {categories.map((cat) => (
-        <Link
-          key={cat}
-          href={`/?category=${cat}`}
-          className={`font-sans font-medium text-sm md:text-base pb-2 whitespace-nowrap transition-colors ${
-            currentCategory === cat
-              ? 'text-violet-600 border-b-2 border-violet-600'
-              : 'text-gray-500 hover:text-obsidian'
-          }`}
-        >
-          {cat}
-        </Link>
-      ))}
+    <nav className="flex flex-wrap gap-2 mb-8">
+      {CATEGORIES.map((cat) => {
+        const isActive = currentCategory === cat || (currentCategory === 'Latest' && cat === 'Home');
+        const href = cat === "Home" ? "/" : `/?category=${cat}`;
+        
+        return (
+          <Link 
+            key={cat} 
+            href={href}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border ${
+              isActive 
+                ? "bg-gray-900 text-white border-gray-900 shadow-md" // High contrast active state!
+                : "bg-white text-gray-600 border-gray-200 hover:border-gray-900 hover:text-gray-900"
+            }`}
+          >
+            {cat}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

@@ -1,56 +1,59 @@
-import { fetchCorporateNews, fetchFullArticleContent } from '@/src/lib/fetchNews';
+import { fetchArticleById } from '../../../lib/fetchNews';
 import Link from 'next/link';
 
-// Next.js allows us to read both the ID and the searchParams (category)
-export default async function ArticlePage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ category?: string }> }) {
-  const { id } = await params;
-  const { category } = await searchParams;
+export default async function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
+  // Await the params to get the ID
+  const resolvedParams = await params;
+  const articleId = resolvedParams.id;
 
-  // 1. Fetch the feed for this specific category (which we KNOW works and has no paywall!)
-  const articles = await fetchCorporateNews(category || 'Latest', 'en');
-
-  // 2. Find our specific article in the allowed feed array
-  const article = articles.find((a: any) => a.id === id);
+  // Fetch the single massive article from your backend
+  const article = await fetchArticleById(articleId);
 
   if (!article) {
     return (
       <div className="max-w-3xl mx-auto py-20 text-center">
-        <h1 className="text-3xl font-serif font-bold mb-4">Article Not Found</h1>
-        <p className="text-gray-500 mb-8">This article may have been removed or placed behind a paywall.</p>
-        <Link href="/" className="bg-violet-600 text-white px-6 py-3 rounded-full hover:bg-violet-700 transition">
-          Return to Feed
+        <h1 className="text-3xl font-bold mb-4">Article Not Found</h1>
+        <Link href="/" className="text-blue-600 hover:underline">
+          &larr; Back to Headlines
         </Link>
       </div>
     );
   }
 
   return (
-    <article className="max-w-3xl mx-auto py-8 md:py-12 space-y-8">
-      {/* Back Button */}
-      <Link href="/" className="text-violet-600 font-medium hover:text-obsidian transition flex items-center gap-2 mb-8 w-fit">
-        <span>←</span> Back to Executive Brief
+    <article className="max-w-3xl mx-auto space-y-8">
+      <Link href="/" className="text-blue-600 hover:underline inline-block mb-4">
+        &larr; Back to Headlines
       </Link>
 
-      {/* Article Header */}
-      <header className="space-y-6">
-        <span className="text-xs font-bold uppercase tracking-wider text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full">
-          {article.category}
-        </span>
-        <h1 className="text-4xl md:text-5xl font-serif font-bold leading-tight text-obsidian">
+      <header className="space-y-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+          <span>{article.category_names?.[0] || 'News'}</span>
+          <span>•</span>
+          <time className="text-gray-500">
+            {new Date(article.pubdate).toLocaleDateString()}
+          </time>
+        </div>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold leading-tight">
           {article.title}
         </h1>
-        <p className="text-gray-500 font-medium pb-6 border-b border-gray-200">{article.time}</p>
       </header>
 
-      {/* Massive Hero Image */}
-      <div className="w-full h-64 md:h-112.5 relative rounded-2xl overflow-hidden shadow-lg bg-gray-100">
-        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />
-      </div>
+      {article.thumbnail?.url && (
+        <div className="w-full mb-8">
+          <img 
+            src={article.thumbnail.url} 
+            alt={article.title} 
+            // FIX: Locked height to h-64 (256px) or h-80 (320px) max on desktop
+            className="w-full h-64 md:h-80 object-cover rounded-xl shadow-sm border border-gray-100"
+          />
+        </div>
+      )}
 
-      {/* The Full Content */}
+      {/* Renders the massive scraped text safely */}
       <div 
-        className="prose prose-lg prose-violet max-w-none text-gray-800 leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: article.fullContent }} 
+        className="prose prose-lg max-w-none text-gray-800 leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: article.html || article.text.replace(/\n/g, '<br />') }}
       />
     </article>
   );

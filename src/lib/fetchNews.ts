@@ -1,127 +1,76 @@
-// guest token 
-const GUEST_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJndWVzdF91c2VyIiwibmFtZSI6Ikd1ZXN0IFVzZXIiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTkwMDAwMDAwMH0.Ks-K9M1xawRMB6t-hKx1mQVMuAE9Xio_ZZskBtC9T-o';
+// src/lib/fetchNews.ts
 
-export async function fetchCorporateNews(category: string = 'Latest', language: string = 'en') {
+// Pointing to your custom Node.js backend instead of the external API
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-  const apiCategory = category === 'Latest' ? '' : encodeURIComponent(category);
-  const apiUrl = `https://services.corporatenews.info/api/v1/headlines/?category=${apiCategory}&language=${language}&limit=50`;
+/**
+ * 🌉 THE DATA BRIDGE
+ * Your frontend components expect the old CorporateNews format.
+ * This helper function maps your Prisma Database fields to match the old format
+ * so you don't have to rewrite a single React component!
+ */
+const mapDatabaseArticleToFrontend = (dbArticle: any) => {
+  if (!dbArticle) return null;
+  
+  return {
+    uuid: dbArticle.originalId || dbArticle.id,
+    id: dbArticle.originalId || dbArticle.id,
+    title: dbArticle.title,
+    // Provide the massive scraped text to both text and html fields!
+    text: dbArticle.fullContent,
+    html: dbArticle.fullContent,
+    category_names: [dbArticle.category],
+    pubdate: dbArticle.pubDate,
+    thumbnail: { url: dbArticle.imageUrl },
+    url: `/article/${dbArticle.originalId || dbArticle.id}`,
+    link: `/article/${dbArticle.originalId || dbArticle.id}`
+  };
+};
 
+export const fetchNews = async (category: string = "", limit: number = 100) => {
   try {
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${GUEST_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
+    console.log(`[FRONTEND] Fetching feed from YOUR backend...`);
+    
+    const url = new URL(`${BACKEND_URL}/articles`);
+    if (category) url.searchParams.append("category", category);
+    url.searchParams.append("limit", limit.toString());
+
+    const response = await fetch(url.toString(), {
+      // Revalidate every 60 seconds so new cron job articles show up automatically
+      next: { revalidate: 60 } 
     });
 
-    if (!response.ok) throw new Error(`API failed: ${response.status}`);
+    if (!response.ok) throw new Error("Failed to fetch from custom backend");
 
     const data = await response.json();
-    const rawArticles = Array.isArray(data) ? data : data.results || [];
+    
+    // Depending on how your article.controller.ts is set up, it might return data directly or inside a { data: [] } object
+    const articles = Array.isArray(data) ? data : data.data || data.articles || [];
 
-
-    return rawArticles.map((article: any) => {
-
-      let imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"; 
-      
-      if (article.thumbnail?.default?.url) {
-        imageUrl = article.thumbnail.default.url;
-      } else if (article.thumbnail?.url) {
-        imageUrl = article.thumbnail.url;
-      } else if (article.render_urls && Array.isArray(article.render_urls) && article.render_urls.length > 0) {
-        imageUrl = article.render_urls[0];
-      } else if (typeof article.render_urls === 'string') {
-        try {
-          const parsedUrls = JSON.parse(article.render_urls.replace(/'/g, '"'));
-          if (parsedUrls.length > 0) imageUrl = parsedUrls[0];
-        } catch (e) {
-        }
-      }
-
-      const contentText = (article.text || article.html || '').trim();
-
-      return {
-        id: article.uuid || article.id,
-        title: article.title,
-        imageUrl: imageUrl,
-        aiSummary: contentText ? contentText.substring(0, 160) + '...' : 'Content pending AI summarization...',
-        
-        fullContent: contentText, 
-
-        score: (Math.random() * (9.9 - 7.5) + 7.5).toFixed(1),
-        category: article.category_names?.[0] || category,
-        time: new Date(article.pubdate || new Date()).toLocaleDateString('en-US', { 
-          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-        }),
-      };
-    });
+    // Map them and send them to the React components
+    return articles.map(mapDatabaseArticleToFrontend);
   } catch (error) {
-    console.error("Error pulling news data:", error);
+    console.error("[FRONTEND] Error fetching news:", error);
     return [];
   }
-}
+};
 
-export async function fetchFullArticleContent(articleId: string | number, language: string = 'en') {
-  const GUEST_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJndWVzdF91c2VyIiwibmFtZSI6Ikd1ZXN0IFVzZXIiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MTkwMDAwMDAwMH0.Ks-K9M1xawRMB6t-hKx1mQVMuAE9Xio_ZZskBtC9T-o';
-  
+export const fetchArticleById = async (articleId: string) => {
   try {
-
-    let response = await fetch(`https://services.corporatenews.info/api/v1/headlines/${articleId}?language=${language}`, {
-      headers: { 'Authorization': `Bearer ${GUEST_TOKEN}` }
+    console.log(`[FRONTEND] Fetching specific article from YOUR backend: ${articleId}`);
+    
+    const response = await fetch(`${BACKEND_URL}/articles/${articleId}`, {
+      cache: 'no-store' // Always get fresh data for the article reading page
     });
 
-    let articleData = null;
+    if (!response.ok) throw new Error("Article not found in your database");
 
-    if (response.ok) {
-      articleData = await response.json();
-    } else {
+    const data = await response.json();
+    const article = data.data || data.article || data;
 
-      console.log(`Single fetch blocked for ${articleId}. Bypassing paywall via feed stream...`);
-      
-      const feedResponse = await fetch(`https://services.corporatenews.info/api/v1/headlines/?language=${language}&limit=100`, {
-        headers: { 'Authorization': `Bearer ${GUEST_TOKEN}` }
-      });
-      
-      if (!feedResponse.ok) return null;
-
-      const feedData = await feedResponse.json();
-      const rawArticles = Array.isArray(feedData) ? feedData : feedData.results || [];
-      
-      articleData = rawArticles.find((a: any) => a.uuid === articleId || a.id === articleId);
-    }
-
-    if (!articleData) return null; 
-
-    let imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"; 
-    if (articleData.thumbnail?.default?.url) {
-      imageUrl = articleData.thumbnail.default.url;
-    } else if (articleData.thumbnail?.url) {
-      imageUrl = articleData.thumbnail.url;
-    } else if (articleData.render_urls) {
-      if (Array.isArray(articleData.render_urls) && articleData.render_urls.length > 0) {
-        imageUrl = articleData.render_urls[0];
-      } else if (typeof articleData.render_urls === 'string') {
-        try {
-          const parsed = JSON.parse(articleData.render_urls.replace(/'/g, '"'));
-          if (parsed.length > 0) imageUrl = parsed[0];
-        } catch(e) {}
-      }
-    }
-
-    return {
-      id: articleData.uuid || articleData.id || articleId,
-      title: articleData.title || "Untitled Article",
-      imageUrl: imageUrl,
-      content: articleData.html || articleData.text || "Content currently unavailable.",
-      category: articleData.category_names?.[0] || 'News',
-      time: new Date(articleData.pubdate || new Date()).toLocaleDateString('en-US', { 
-        month: 'long', day: 'numeric', year: 'numeric' 
-      }),
-    };
-
+    return mapDatabaseArticleToFrontend(article);
   } catch (error) {
-    console.error(`Error fetching article:`, error);
+    console.error(`[FRONTEND] Error fetching article ${articleId}:`, error);
     return null;
   }
-}
+};
