@@ -4,30 +4,20 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-400 py-12 mt-20">
       <div className="container mx-auto px-4 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="text-2xl font-black tracking-tighter text-white mb-6 block">
               NEWS<span className="text-gray-400 font-light italic">DIGEST</span>
             </Link>
             <p className="text-sm leading-relaxed">
-              Your daily source for the most important stories in tech, business, and global affairs.
-              Insightful, accurate, and always independent.
+              Your daily source for the most important stories in tech, business, and global affairs. Insightful, accurate, and always independent.
             </p>
           </div>
-          <div>
-            <h4 className="text-white font-bold mb-6">Categories</h4>
-            <ul className="space-y-3 text-sm">
-              <li><Link to="/category/world" className="hover:text-white transition-colors">World News</Link></li>
-              <li><Link to="/category/tech" className="hover:text-white transition-colors">Technology</Link></li>
-              <li><Link to="/category/business" className="hover:text-white transition-colors">Business</Link></li>
-              <li><Link to="/category/ai" className="hover:text-white transition-colors">Artificial Intelligence</Link></li>
-            </ul>
-          </div>
-          <div>
+
+          <div className="md:justify-self-center">
             <h4 className="text-white font-bold mb-6">Company</h4>
             <ul className="space-y-3 text-sm">
               <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-              <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
               <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
             </ul>

@@ -4,6 +4,10 @@ import { Footer } from "@/src/components/layout/Footer";
 import { Home } from "@/src/pages/Home";
 import { ArticleDetail } from "@/src/pages/ArticleDetail";
 import { CategoryPage } from "@/src/pages/CategoryPage";
+import { AuthPage } from "../pages/AuthPage";
+import { About } from "@/src/pages/About";
+import { Contact } from "@/src/pages/Contact";
+import { Privacy } from "@/src/pages/Privacy";
 
 export default function App() {
   return (
@@ -15,6 +19,10 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/article/:id" element={<ArticleDetail />} />
             <Route path="/category/:category" element={<CategoryPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
           </Routes>
         </div>
         <Footer />

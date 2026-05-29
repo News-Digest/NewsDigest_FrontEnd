@@ -99,14 +99,20 @@ export function Header() {
                 )}
               </div>
             ) : (
-              <Button 
-                variant="primary" 
-                size="sm" 
-                className="bg-violet-600 hover:bg-violet-700"
-                onClick={() => signInWithGoogle()}
-              >
-                Sign In
-              </Button>
+              <div className="hidden sm:flex items-center gap-2">
+                <Link
+                  to="/auth?mode=sign-in"
+                  className="inline-flex items-center justify-center rounded-md border border-violet-600 bg-transparent px-4 py-2 text-sm font-medium text-violet-600 transition-colors hover:bg-violet-50"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/auth?mode=sign-up"
+                  className="inline-flex items-center justify-center rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
             <button
               className="xl:hidden p-2 text-gray-500"

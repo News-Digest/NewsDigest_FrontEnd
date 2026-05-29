@@ -16,7 +16,7 @@ async function startServer() {
   await nextApp.prepare();
 
   const app = express();
-  const PORT = 1000;
+  const PORT = 3000;
 
   // Pointing to your custom Node.js backend
   const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
@@ -27,6 +27,57 @@ async function startServer() {
   
   app.get("/api/articles", async (req, res) => {
     const { category = "Latest", limit = 10, offset = 0 } = req.query;
+    
+    try {
+      const url = new URL(`${BACKEND_URL}/articles`);
+      
+      // If category is "Latest", we fetch everything (no filter)
+      // Otherwise, we pass the category to the backend
+      if (category !== "Latest") {
+        url.searchParams.append("category", category as string);
+      }
+      
+      url.searchParams.append("limit", limit.toString());
+      url.searchParams.append("offset", offset.toString());
+
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error("Backend Port 5000 unreachable");
+
+      const data = await response.json();
+      const dbArticles = Array.isArray(data) ? data : data.data || data.articles || [];
+
+      // Map Database fields to Frontend fields
+      const mappedArticles = dbArticles.map((dbArticle: any) => ({
+        id: dbArticle.originalId || dbArticle.id,
+        title: dbArticle.title || "No Title",
+        description: dbArticle.fullContent ? dbArticle.fullContent.substring(0, 160) + '...' : 'No description.',
+        content: dbArticle.fullContent || "Content not available.",
+        image_url: dbArticle.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+        author: dbArticle.author || "Staff Writer",
+        published_at: dbArticle.pubDate || new Date().toISOString(),
+        category: dbArticle.category || (category as string),
+        tags: ["News"],
+        popularity_score: parseFloat((Math.random() * (9.9 - 7.5) + 7.5).toFixed(1)),
+        reading_time: `${Math.floor(Math.random() * 10) + 3} min read`,
+        // Compatibility fields for some components
+        thumbnail: { url: dbArticle.imageUrl || "" },
+        url: `/article/${dbArticle.originalId || dbArticle.id}`
+      }));
+
+      console.log(`[Proxy] Sent ${mappedArticles.length} articles for category: ${category}`);
+
+      res.json({
+        articles: mappedArticles,
+        total: data.total || dbArticles.length,
+        hasMore: dbArticles.length >= Number(limit)
+      });
+    } catch (error) {
+      console.error("Proxy Error (Articles):", error);
+      res.json({ articles: [], total: 0, hasMore: false });
+    }
+  });
+  app.get("/api/articles", async (req, res) => {
+    const { category = "Latest", limit = 100, offset = 0 } = req.query;
     
     try {
       const url = new URL(`${BACKEND_URL}/articles`);

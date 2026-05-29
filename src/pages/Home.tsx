@@ -37,10 +37,18 @@ export function Home() {
     try {
       const res = await fetch(`/api/articles?category=${currentCategory}&limit=10&offset=${currentOffset}`);
       const data: ArticlesResponse = await res.json();
+      
       setArticles((prev) => {
         const newArticles = data?.articles || [];
-        return currentOffset === 0 ? newArticles : [...prev, ...newArticles];
+        if (currentOffset === 0) return newArticles;
+
+        // Create a Set of existing IDs to prevent duplicates
+        const existingIds = new Set(prev.map(a => a.id));
+        const filteredNew = newArticles.filter(a => !existingIds.has(a.id));
+        
+        return [...prev, ...filteredNew];
       });
+
       setHasMore(data?.hasMore || false);
       setLoading(false);
       setLoadingMore(false);
@@ -172,23 +180,32 @@ export function Home() {
                 </div>
               </div>
 
-              <div className="space-y-12">
-                {sortedDates.map((date) => (
-                  <div key={date}>
-                    <div className="flex items-center gap-4 mb-6">
-                      <h3 className="text-sm font-black uppercase tracking-widest text-violet-600 whitespace-nowrap">
-                        {date}
-                      </h3>
-                      <div className="h-px w-full bg-gray-100" />
+              {articles.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 px-8 py-14 text-center text-gray-600">
+                  <p className="text-xl font-semibold text-gray-900 mb-2">No articles found.</p>
+                  <p className="max-w-xl mx-auto text-sm leading-6">
+                    We couldn't find any stories for {category} right now. Try another topic or check back later for fresh coverage.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-12">
+                  {sortedDates.map((date) => (
+                    <div key={date}>
+                      <div className="flex items-center gap-4 mb-6">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-violet-600 whitespace-nowrap">
+                          {date}
+                        </h3>
+                        <div className="h-px w-full bg-gray-100" />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {groupedArticles[date].map((art) => (
+                          <ArticleCard key={art.id} article={art} variant="medium" />
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {groupedArticles[date].map((art) => (
-                        <ArticleCard key={art.id} article={art} variant="medium" />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {hasMore && (
                 <div className="mt-12 flex justify-center">
