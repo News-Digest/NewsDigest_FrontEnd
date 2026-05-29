@@ -23,7 +23,21 @@ export function Header() {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const categoryFromPath = location.pathname.match(/^\/category\/(.+)$/);
+  const activeCategory = categoryFromPath
+    ? decodeURIComponent(categoryFromPath[1])
+    : searchParams.get("category") || "Latest";
   const { user, signInWithGoogle, logout } = useAuth();
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split("@")[0] ||
+    "User";
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id || "guest"}`;
 
   React.useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -48,10 +62,10 @@ export function Header() {
               {categories.map((cat) => (
                 <Link
                   key={cat}
-                  to={`/?category=${cat}`}
+                  to={cat === "Latest" ? "/" : `/?category=${encodeURIComponent(cat)}`}
                   className={cn(
                     "text-sm font-medium transition-colors hover:text-violet-600 whitespace-nowrap",
-                    location.search.includes(`category=${cat}`) ? "text-violet-600" : "text-gray-600"
+                    activeCategory === cat ? "text-violet-600" : "text-gray-600"
                   )}
                 >
                   {cat}
@@ -74,13 +88,13 @@ export function Header() {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="w-10 h-10 rounded-full overflow-hidden border-2 border-transparent hover:border-violet-600 transition-all"
                 >
-                  <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`} alt={user.displayName || "User"} />
+                  <img src={avatarUrl} alt={displayName} />
                 </button>
                 
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-[100]">
                     <div className="px-4 py-2 border-b border-gray-50 mb-1">
-                      <div className="text-sm font-bold text-gray-900 truncate">{user.displayName}</div>
+                      <div className="text-sm font-bold text-gray-900 truncate">{displayName}</div>
                       <div className="text-xs text-gray-500 truncate">{user.email}</div>
                     </div>
                     <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
@@ -130,16 +144,20 @@ export function Header() {
               {categories.map((cat) => (
                 <Link
                   key={cat}
-                  to={`/?category=${cat}`}
+                  to={cat === "Latest" ? "/" : `/?category=${encodeURIComponent(cat)}`}
                   className="text-lg font-medium text-gray-900 border-b border-gray-50 pb-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {cat}
                 </Link>
               ))}
-              <Button variant="primary" className="w-full mt-4">
+              <Link
+                to="/subscription"
+                className="inline-flex items-center justify-center w-full rounded-md bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 Subscribe Now
-              </Button>
+              </Link>
             </nav>
           </div>
         )}

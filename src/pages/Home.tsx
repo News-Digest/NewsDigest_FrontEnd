@@ -4,7 +4,6 @@ import { Article, ArticlesResponse } from "@/src/app/types";
 import { ArticleCard } from "@/src/components/article/ArticleCard";
 import { TrendingSidebar } from "@/src/components/article/TrendingSidebar";
 import { NewsletterCTA } from "@/src/components/layout/NewsletterCTA";
-import { CategoryNav } from "@/src/components/layout/CategoryNav";
 import { Button } from "@/src/components/ui/Button";
 import { Loader2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -133,7 +132,6 @@ export function Home() {
 
   return (
     <main className="container mx-auto px-4 lg:px-8 pt-[15px] pb-8">
-      <CategoryNav />
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Left Column: Hub or Feed */}

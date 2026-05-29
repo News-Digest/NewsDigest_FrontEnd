@@ -29,8 +29,6 @@ const mapDatabaseArticleToFrontend = (dbArticle: any) => {
 
 export const fetchNews = async (category: string = "", limit: number = 100) => {
   try {
-    console.log(`[FRONTEND] Fetching feed from YOUR backend...`);
-    
     const url = new URL(`${BACKEND_URL}/articles`);
     if (category) url.searchParams.append("category", category);
     url.searchParams.append("limit", limit.toString());
@@ -57,8 +55,6 @@ export const fetchNews = async (category: string = "", limit: number = 100) => {
 
 export const fetchArticleById = async (articleId: string) => {
   try {
-    console.log(`[FRONTEND] Fetching specific article from YOUR backend: ${articleId}`);
-    
     const response = await fetch(`${BACKEND_URL}/articles/${articleId}`, {
       cache: 'no-store' // Always get fresh data for the article reading page
     });

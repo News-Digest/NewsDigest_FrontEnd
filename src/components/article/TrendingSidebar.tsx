@@ -58,9 +58,12 @@ export function TrendingSidebar() {
         <p className="text-gray-400 text-sm mb-6 relative z-10">
           Get unlimited access to investigative reports and expert analysis.
         </p>
-        <button className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors relative z-10">
+        <Link
+          to="/subscription"
+          className="w-full inline-flex bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl font-bold text-sm items-center justify-center gap-2 transition-colors relative z-10"
+        >
           Go Premium <ArrowRight className="w-4 h-4" />
-        </button>
+        </Link>
       </div>
     </div>
   );

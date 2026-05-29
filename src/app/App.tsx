@@ -8,6 +8,7 @@ import { AuthPage } from "../pages/AuthPage";
 import { About } from "@/src/pages/About";
 import { Contact } from "@/src/pages/Contact";
 import { Privacy } from "@/src/pages/Privacy";
+import { Subscription } from "@/src/pages/Subscription";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/article/:id" element={<ArticleDetail />} />
             <Route path="/category/:category" element={<CategoryPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/subscription" element={<Subscription />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy" element={<Privacy />} />
