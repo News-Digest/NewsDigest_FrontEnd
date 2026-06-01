@@ -1,14 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Header } from "@/src/components/layout/Header";
 import { Footer } from "@/src/components/layout/Footer";
-import { Home } from "@/src/pages/Home";
-import { ArticleDetail } from "@/src/pages/ArticleDetail";
-import { CategoryPage } from "@/src/pages/CategoryPage";
-import { AuthPage } from "../pages/AuthPage";
-import { About } from "@/src/pages/About";
-import { Contact } from "@/src/pages/Contact";
-import { Privacy } from "@/src/pages/Privacy";
-import { Subscription } from "@/src/pages/Subscription";
+import { Home } from "@/src/views/Home";
+import { ArticleDetail } from "@/src/views/ArticleDetail";
+import { CategoryPage } from "@/src/views/CategoryPage";
+import { AuthPage } from "../views/AuthPage";
+import { About } from "@/src/views/About";
+import { Contact } from "@/src/views/Contact";
+import { Privacy } from "@/src/views/Privacy";
+import { Subscription } from "@/src/views/Subscription";
 
 export default function App() {
   return (

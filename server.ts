@@ -11,142 +11,163 @@ const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
 const handle = nextApp.getRequestHandler();
 
+// Pointing to your custom Node.js backend
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+
+// ------------------------------------------------------------------
+// Helpers — deterministic, stable metadata (no more Math.random()!)
+// ------------------------------------------------------------------
+
+/** Estimate reading time from the article body at ~200 wpm. Deterministic. */
+function computeReadingTime(content: string): string {
+  const words = content ? content.trim().split(/\s+/).length : 0;
+  const minutes = Math.max(1, Math.round(words / 200));
+  return `${minutes} min read`;
+}
+
+/**
+ * Popularity score. Prefer a real value from the backend/DB. If the backend
+ * doesn't provide one yet, derive a STABLE score from the article id so it no
+ * longer flickers on every request. Replace this with real reader analytics
+ * (Lukijadata) once the backend exposes a score/view count.
+ */
+function popularityScore(dbArticle: any): number {
+  const real =
+    dbArticle.popularityScore ??
+    dbArticle.popularity_score ??
+    dbArticle.score ??
+    dbArticle.views;
+  if (real !== undefined && real !== null && !Number.isNaN(Number(real))) {
+    return Number(real);
+  }
+  // Stable hash of the id -> [7.5, 9.9]
+  const key = String(dbArticle.originalId || dbArticle.id || dbArticle.title || "");
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return parseFloat((7.5 + (hash % 240) / 100).toFixed(1)); // 7.5 .. 9.9
+}
+
+/** Tags from the backend when available, otherwise fall back to the category. */
+function articleTags(dbArticle: any, fallbackCategory: string): string[] {
+  if (Array.isArray(dbArticle.tags) && dbArticle.tags.length) return dbArticle.tags;
+  if (Array.isArray(dbArticle.category_names) && dbArticle.category_names.length) {
+    return dbArticle.category_names;
+  }
+  return [dbArticle.category || fallbackCategory || "News"];
+}
+
+/** Map a backend/DB article into the shape the frontend components expect. */
+function mapArticle(dbArticle: any, fallbackCategory: string) {
+  const content = dbArticle.fullContent || dbArticle.content || "";
+  return {
+    id: dbArticle.originalId || dbArticle.id,
+    title: dbArticle.title || "No Title",
+    description: content ? content.substring(0, 160).trim() + "..." : "No description.",
+    content: content || "Content not available.",
+    image_url: dbArticle.imageUrl || dbArticle.image_url || FALLBACK_IMAGE,
+    author: dbArticle.author || "Staff Writer",
+    published_at: dbArticle.pubDate || dbArticle.published_at || new Date().toISOString(),
+    category: dbArticle.category || fallbackCategory,
+    tags: articleTags(dbArticle, fallbackCategory),
+    popularity_score: popularityScore(dbArticle),
+    reading_time: dbArticle.reading_time || computeReadingTime(content),
+    // Compatibility fields for some components
+    thumbnail: { url: dbArticle.imageUrl || dbArticle.image_url || "" },
+    url: `/article/${dbArticle.originalId || dbArticle.id}`,
+  };
+}
+
+function extractArticles(data: any): any[] {
+  return Array.isArray(data) ? data : data.data || data.articles || [];
+}
+
 async function startServer() {
   // Prepare the Next.js app before starting Express
   await nextApp.prepare();
 
   const app = express();
-  const PORT = 3000;
-
-  // Pointing to your custom Node.js backend
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  const PORT = Number(process.env.PORT) || 3000;
 
   // ==========================================
   // API ROUTES (Fetching from your own DB!)
   // ==========================================
-  
+
   app.get("/api/articles", async (req, res) => {
-    const { category = "Latest", limit = 10, offset = 0 } = req.query;
-    
+    const {
+      category = "Latest",
+      limit = 10,
+      offset = 0,
+      q = "",
+    } = req.query as Record<string, string>;
+
+    const limitNum = Number(limit);
+    const offsetNum = Number(offset);
+    const query = (q || "").toString().trim().toLowerCase();
+
     try {
       const url = new URL(`${BACKEND_URL}/articles`);
-      
-      // If category is "Latest", we fetch everything (no filter)
-      // Otherwise, we pass the category to the backend
+
+      // "Latest" means no category filter
       if (category !== "Latest") {
-        url.searchParams.append("category", category as string);
+        url.searchParams.append("category", category);
       }
-      
-      url.searchParams.append("limit", limit.toString());
-      url.searchParams.append("offset", offset.toString());
+
+      // When searching we need a wider net to filter locally; otherwise fetch
+      // exactly enough to cover offset + limit.
+      const fetchLimit = query ? 200 : offsetNum + limitNum;
+      url.searchParams.append("limit", fetchLimit.toString());
 
       const response = await fetch(url.toString());
-      if (!response.ok) throw new Error("Backend Port 5000 unreachable");
+      if (!response.ok) throw new Error("Backend unreachable");
 
       const data = await response.json();
-      const dbArticles = Array.isArray(data) ? data : data.data || data.articles || [];
+      let mapped = extractArticles(data).map((a: any) => mapArticle(a, category));
 
-      // Map Database fields to Frontend fields
-      const mappedArticles = dbArticles.map((dbArticle: any) => ({
-        id: dbArticle.originalId || dbArticle.id,
-        title: dbArticle.title || "No Title",
-        description: dbArticle.fullContent ? dbArticle.fullContent.substring(0, 160) + '...' : 'No description.',
-        content: dbArticle.fullContent || "Content not available.",
-        image_url: dbArticle.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        author: dbArticle.author || "Staff Writer",
-        published_at: dbArticle.pubDate || new Date().toISOString(),
-        category: dbArticle.category || (category as string),
-        tags: ["News"],
-        popularity_score: parseFloat((Math.random() * (9.9 - 7.5) + 7.5).toFixed(1)),
-        reading_time: `${Math.floor(Math.random() * 10) + 3} min read`,
-        // Compatibility fields for some components
-        thumbnail: { url: dbArticle.imageUrl || "" },
-        url: `/article/${dbArticle.originalId || dbArticle.id}`
-      }));
+      // Local search filtering (until the backend supports full-text search)
+      if (query) {
+        mapped = mapped.filter(
+          (a) =>
+            a.title.toLowerCase().includes(query) ||
+            a.content.toLowerCase().includes(query) ||
+            a.category.toLowerCase().includes(query)
+        );
+      }
 
-      console.log(`[Proxy] Sent ${mappedArticles.length} articles for category: ${category}`);
+      const total = query ? mapped.length : data.total || mapped.length;
+      const paginated = mapped.slice(offsetNum, offsetNum + limitNum);
+
+      console.log(
+        `[Proxy] ${paginated.length} articles (category=${category}${query ? `, q="${query}"` : ""}, offset=${offsetNum})`
+      );
 
       res.json({
-        articles: mappedArticles,
-        total: data.total || dbArticles.length,
-        hasMore: dbArticles.length >= Number(limit)
+        articles: paginated,
+        total,
+        hasMore: offsetNum + limitNum < total,
       });
     } catch (error) {
       console.error("Proxy Error (Articles):", error);
       res.json({ articles: [], total: 0, hasMore: false });
     }
   });
-  app.get("/api/articles", async (req, res) => {
-    const { category = "Latest", limit = 100, offset = 0 } = req.query;
-    
-    try {
-      const url = new URL(`${BACKEND_URL}/articles`);
-      if (category !== "Latest") url.searchParams.append("category", category as string);
-      
-      // Fetch enough to cover the offset + limit
-      const fetchLimit = Number(offset) + Number(limit);
-      url.searchParams.append("limit", fetchLimit.toString());
-
-      const response = await fetch(url.toString());
-      if (!response.ok) throw new Error("Failed to fetch from custom backend");
-
-      const data = await response.json();
-      const dbArticles = Array.isArray(data) ? data : data.data || data.articles || [];
-
-      // Map Prisma fields to match your React components' expectations
-      const mappedArticles = dbArticles.map((dbArticle: any) => {
-        const contentText = dbArticle.fullContent || "";
-        
-        return {
-          id: dbArticle.originalId || dbArticle.id,
-          title: dbArticle.title || "No Title",
-          description: contentText ? contentText.substring(0, 160) + '...' : 'Content pending...',
-          content: contentText || "Content not available.",
-          image_url: dbArticle.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-          author: dbArticle.author || "Staff Writer",
-          published_at: dbArticle.pubDate || new Date().toISOString(),
-          category: dbArticle.category || (category as string),
-          tags: ["News"],
-          popularity_score: parseFloat((Math.random() * (9.9 - 7.5) + 7.5).toFixed(1)),
-          reading_time: `${Math.floor(Math.random() * 10) + 3} min read`
-        };
-      });
-
-      const paginated = mappedArticles.slice(Number(offset), Number(offset) + Number(limit));
-      
-      res.json({
-        articles: paginated,
-        total: dbArticles.length,
-        hasMore: dbArticles.length >= Number(offset) + Number(limit)
-      });
-    } catch (error) {
-      console.error("Error fetching from backend:", error);
-      res.json({
-        articles: [],
-        total: 0,
-        hasMore: false
-      });
-    }
-  });
 
   app.get("/api/articles/trending", async (req, res) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/articles?limit=10`);
+      // Pull a pool of recent articles and rank by popularity score.
+      const response = await fetch(`${BACKEND_URL}/articles?limit=50`);
       if (!response.ok) throw new Error("API Error");
-      
+
       const data = await response.json();
-      const dbArticles = Array.isArray(data) ? data : data.data || data.articles || [];
-      
-      const trending = dbArticles
-        .slice(0, 5)
-        .map((dbArticle: any, i: number) => ({
-          id: dbArticle.originalId || dbArticle.id || `trend-${i}`,
-          title: dbArticle.title,
-          category: dbArticle.category || "General",
-          published_at: dbArticle.pubDate || new Date().toISOString(),
-          popularity_score: parseFloat((Math.random() * (9.9 - 7.5) + 7.5).toFixed(1))
-        }));
-        
+      const trending = extractArticles(data)
+        .map((a: any) => mapArticle(a, "General"))
+        .sort((a, b) => b.popularity_score - a.popularity_score)
+        .slice(0, 5);
+
       res.json(trending);
     } catch (error) {
       console.error("Error fetching trending articles:", error);
@@ -163,20 +184,7 @@ async function startServer() {
       if (response.ok) {
         const data = await response.json();
         const dbArticle = data.data || data.article || data;
-
-        res.json({
-          id: dbArticle.originalId || dbArticle.id,
-          title: dbArticle.title || "Untitled Article",
-          description: (dbArticle.fullContent || "").substring(0, 160) + "...",
-          content: dbArticle.fullContent || "Content currently unavailable.",
-          image_url: dbArticle.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-          author: dbArticle.author || "Staff Writer",
-          published_at: dbArticle.pubDate || new Date().toISOString(),
-          category: dbArticle.category || 'News',
-          tags: ["News"],
-          popularity_score: 8.5,
-          reading_time: "5 min read"
-        });
+        res.json(mapArticle(dbArticle, "News"));
       } else {
         res.status(404).json({ error: "Article not found in database" });
       }
