@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, Menu, X, Bell, User as UserIcon, LogOut, Settings } from "lucide-react";
 import { Button } from "@/src/components/ui/Button";
 import { cn } from "@/src/lib/utils";
@@ -22,6 +22,10 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const categoryFromPath = location.pathname.match(/^\/category\/(.+)$/);
@@ -44,6 +48,19 @@ export function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  React.useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus();
+  }, [isSearchOpen]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    navigate(`/?q=${encodeURIComponent(q)}`);
+    setIsSearchOpen(false);
+    setIsMenuOpen(false);
+  };
 
   return (
     <header
@@ -75,10 +92,37 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-2 text-gray-500 hover:text-violet-600 transition-colors">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-500 hover:text-violet-600 transition-colors hidden sm:block">
+            <form
+              onSubmit={handleSearchSubmit}
+              className={cn(
+                "flex items-center overflow-hidden transition-all duration-200",
+                isSearchOpen ? "w-44 sm:w-64" : "w-9"
+              )}
+            >
+              {isSearchOpen && (
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => !searchQuery && setIsSearchOpen(false)}
+                  placeholder="Search articles..."
+                  className="w-full bg-gray-100 rounded-l-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              )}
+              <button
+                type={isSearchOpen ? "submit" : "button"}
+                onClick={() => !isSearchOpen && setIsSearchOpen(true)}
+                aria-label="Search"
+                className={cn(
+                  "p-2 text-gray-500 hover:text-violet-600 transition-colors",
+                  isSearchOpen && "bg-gray-100 rounded-r-full"
+                )}
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            </form>
+            <button className="p-2 text-gray-500 hover:text-violet-600 transition-colors hidden sm:block" aria-label="Notifications">
               <Bell className="w-5 h-5" />
             </button>
             

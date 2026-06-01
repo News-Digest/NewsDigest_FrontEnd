@@ -1,33 +1,108 @@
+import * as React from "react";
 import { Button } from "@/src/components/ui/Button";
-import { Mail } from "lucide-react";
+import { supabase } from "@/src/lib/supabase";
+import { Mail, Check, Loader2 } from "lucide-react";
+
+type Status = "idle" | "loading" | "success" | "error";
+
+/**
+ * Captures newsletter sign-ups into the Supabase `subscribers` table, which the
+ * backend's SMTP / email-automation step reads from to send the digest.
+ *
+ * Expected table (create in Supabase SQL editor):
+ *   create table public.subscribers (
+ *     id uuid primary key default gen_random_uuid(),
+ *     email text not null unique,
+ *     source text,
+ *     created_at timestamptz not null default now()
+ *   );
+ *   alter table public.subscribers enable row level security;
+ *   create policy "anon can subscribe" on public.subscribers
+ *     for insert to anon with check (true);
+ */
+function useNewsletterForm(source: string) {
+  const [email, setEmail] = React.useState("");
+  const [status, setStatus] = React.useState<Status>("idle");
+  const [message, setMessage] = React.useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setStatus("loading");
+    setMessage("");
+
+    const { error } = await supabase
+      .from("subscribers")
+      .insert({ email: email.trim().toLowerCase(), source });
+
+    if (error) {
+      // 23505 = unique_violation: already subscribed, treat as success
+      if (error.code === "23505") {
+        setStatus("success");
+        setMessage("You're already on the list — thanks!");
+      } else {
+        setStatus("error");
+        setMessage(error.message || "Something went wrong. Please try again.");
+      }
+      return;
+    }
+
+    setStatus("success");
+    setMessage("You're in! Check your inbox for the next digest.");
+    setEmail("");
+  };
+
+  return { email, setEmail, status, message, handleSubmit };
+}
 
 export function NewsletterCTA({ variant = "inline" }: { variant?: "inline" | "full" }) {
+  const { email, setEmail, status, message, handleSubmit } = useNewsletterForm(variant);
+  const loading = status === "loading";
+  const success = status === "success";
+
   if (variant === "full") {
     return (
       <section className="bg-violet-600 py-16 rounded-3xl my-12 overflow-hidden relative">
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-violet-500 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-64 h-64 bg-violet-700 rounded-full opacity-20 blur-3xl"></div>
-        
+
         <div className="container mx-auto px-8 text-center relative z-10">
           <div className="max-w-2xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">
               Get the digest delivered to your inbox.
             </h2>
             <p className="text-violet-100 mb-8 text-lg">
-              Join 50,000+ readers who start their day with our curated news analysis.
+              Join readers who start their day with our curated news analysis.
               No spam, just the stories that matter.
             </p>
-            <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-6 py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-violet-200 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
-                required
-              />
-              <Button variant="secondary" size="lg" className="bg-white text-violet-600 hover:bg-violet-50">
-                Subscribe
-              </Button>
-            </form>
+            {success ? (
+              <div className="flex items-center justify-center gap-2 text-white font-semibold text-lg">
+                <Check className="w-5 h-5" /> {message}
+              </div>
+            ) : (
+              <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onSubmit={handleSubmit}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 px-6 py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-violet-200 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                  required
+                  disabled={loading}
+                />
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="lg"
+                  className="bg-white text-violet-600 hover:bg-violet-50"
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subscribe"}
+                </Button>
+              </form>
+            )}
+            {status === "error" && <p className="text-white/90 text-sm mt-4">{message}</p>}
             <p className="text-violet-200 text-xs mt-4">
               By subscribing, you agree to our Terms of Service and Privacy Policy.
             </p>
@@ -48,15 +123,27 @@ export function NewsletterCTA({ variant = "inline" }: { variant?: "inline" | "fu
       <p className="text-gray-600 mb-6 text-sm leading-relaxed">
         Don't miss out on the latest insights. Subscribe to our weekly newsletter for exclusive content.
       </p>
-      <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-        <input
-          type="email"
-          placeholder="your@email.com"
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-          required
-        />
-        <Button className="w-full py-3">Subscribe Now</Button>
-      </form>
+      {success ? (
+        <div className="flex items-center gap-2 text-violet-700 font-semibold text-sm py-3">
+          <Check className="w-5 h-5" /> {message}
+        </div>
+      ) : (
+        <form className="space-y-3" onSubmit={handleSubmit}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+            required
+            disabled={loading}
+          />
+          <Button type="submit" className="w-full py-3" disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Subscribe Now"}
+          </Button>
+          {status === "error" && <p className="text-red-600 text-xs">{message}</p>}
+        </form>
+      )}
     </div>
   );
 }

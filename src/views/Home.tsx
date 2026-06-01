@@ -28,13 +28,21 @@ export function Home() {
   const [offset, setOffset] = React.useState(0);
   const [searchParams] = useSearchParams();
   const category = searchParams.get("category") || "Latest";
+  const searchTerm = searchParams.get("q") || "";
+  const isSearching = searchTerm.length > 0;
 
   const [categoryArticles, setCategoryArticles] = React.useState<{[key: string]: Article[]}>({});
   const [loadingCategories, setLoadingCategories] = React.useState(false);
 
-  const fetchArticles = React.useCallback(async (currentOffset: number, currentCategory: string) => {
+  const fetchArticles = React.useCallback(async (currentOffset: number, currentCategory: string, q: string = "") => {
     try {
-      const res = await fetch(`/api/articles?category=${currentCategory}&limit=10&offset=${currentOffset}`);
+      const params = new URLSearchParams({
+        category: currentCategory,
+        limit: "10",
+        offset: String(currentOffset),
+      });
+      if (q) params.set("q", q);
+      const res = await fetch(`/api/articles?${params.toString()}`);
       const data: ArticlesResponse = await res.json();
       
       setArticles((prev) => {
@@ -88,18 +96,19 @@ export function Home() {
   React.useEffect(() => {
     setLoading(true);
     setOffset(0);
-    fetchArticles(0, category);
-    if (category === "Latest") {
+    fetchArticles(0, category, searchTerm);
+    // Only show the category hub on the default Latest view (not while searching)
+    if (category === "Latest" && !isSearching) {
       fetchCategoryHub();
     }
-  }, [fetchArticles, fetchCategoryHub, category]);
+  }, [fetchArticles, fetchCategoryHub, category, searchTerm, isSearching]);
 
   const handleLoadMore = () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const nextOffset = offset + 10;
     setOffset(nextOffset);
-    fetchArticles(nextOffset, category);
+    fetchArticles(nextOffset, category, searchTerm);
   };
 
   if (loading) {
@@ -136,8 +145,8 @@ export function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Left Column: Hub or Feed */}
         <div className="lg:col-span-8">
-          {/* Category Hub (Only on Latest) */}
-          {category === "Latest" && Object.keys(categoryArticles).length > 0 && (
+          {/* Category Hub (Only on Latest, not while searching) */}
+          {category === "Latest" && !isSearching && Object.keys(categoryArticles).length > 0 && (
             <div className="space-y-16 mb-16">
               {HUB_CATEGORIES.map((catName) => {
                 const catArticles = categoryArticles[catName];
@@ -168,10 +177,12 @@ export function Home() {
             </div>
           )}
 
-          {category !== "Latest" && (
+          {(category !== "Latest" || isSearching) && (
             <>
               <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">{category} News</h2>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                  {isSearching ? `Search: "${searchTerm}"` : `${category} News`}
+                </h2>
                 <div className="flex gap-4 text-sm font-bold text-gray-400">
                   <button className="text-blue-600 border-b-2 border-blue-600 pb-4 -mb-4">Newest</button>
                   {/* <button className="hover:text-gray-900 transition-colors">Popular</button> */}
@@ -182,7 +193,9 @@ export function Home() {
                 <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 px-8 py-14 text-center text-gray-600">
                   <p className="text-xl font-semibold text-gray-900 mb-2">No articles found.</p>
                   <p className="max-w-xl mx-auto text-sm leading-6">
-                    We couldn't find any stories for {category} right now. Try another topic or check back later for fresh coverage.
+                    {isSearching
+                      ? `No stories matched "${searchTerm}". Try a different keyword.`
+                      : `We couldn't find any stories for ${category} right now. Try another topic or check back later for fresh coverage.`}
                   </p>
                 </div>
               ) : (
