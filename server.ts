@@ -93,6 +93,45 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
+  app.use(express.json());
+
+  // ==========================================
+  // ADMIN PROXY
+  // ------------------------------------------
+  // The admin dashboard talks to the backend's JWT-protected admin API. We
+  // proxy it through this server (same-origin) so the browser never hits the
+  // backend directly — avoids CORS and keeps the Bearer token flow simple.
+  // Requests are forwarded *raw* (no field mapping) unlike the public feed.
+  // ==========================================
+
+  async function proxyToBackend(req: express.Request, res: express.Response, backendPath: string) {
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (req.headers.authorization) headers.Authorization = req.headers.authorization;
+
+      const init: RequestInit = { method: req.method, headers };
+      if (!["GET", "HEAD"].includes(req.method)) {
+        init.body = JSON.stringify(req.body ?? {});
+      }
+
+      const backendRes = await fetch(`${BACKEND_URL}${backendPath}`, init);
+      const text = await backendRes.text();
+      res
+        .status(backendRes.status)
+        .set("Content-Type", backendRes.headers.get("content-type") || "application/json")
+        .send(text);
+    } catch (error) {
+      console.error(`[Admin Proxy] ${backendPath} failed:`, error);
+      res.status(502).json({ message: "Admin backend unreachable" });
+    }
+  }
+
+  // Admin login -> backend /auth/admin/login
+  app.post("/api/admin-login", (req, res) => proxyToBackend(req, res, "/auth/admin/login"));
+
+  // Everything under /api/admin/* -> backend /admin/* (Authorization passed through)
+  app.use("/api/admin", (req, res) => proxyToBackend(req, res, `/admin${req.url}`));
+
   // ==========================================
   // API ROUTES (Fetching from your own DB!)
   // ==========================================
