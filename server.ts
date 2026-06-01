@@ -132,6 +132,11 @@ async function startServer() {
   // Everything under /api/admin/* -> backend /admin/* (Authorization passed through)
   app.use("/api/admin", (req, res) => proxyToBackend(req, res, `/admin${req.url}`));
 
+  // Public newsletter opt-in -> backend /newsletter/subscribe
+  app.post("/api/newsletter/subscribe", (req, res) =>
+    proxyToBackend(req, res, "/newsletter/subscribe")
+  );
+
   // ==========================================
   // API ROUTES (Fetching from your own DB!)
   // ==========================================
