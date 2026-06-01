@@ -59,26 +59,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-### Supabase `subscribers` table
+### Newsletter sign-ups
 
-The newsletter forms insert into a `subscribers` table. Create it in the
-Supabase SQL editor:
-
-```sql
-create table public.subscribers (
-  id uuid primary key default gen_random_uuid(),
-  email text not null unique,
-  source text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.subscribers enable row level security;
-
-create policy "anon can subscribe"
-  on public.subscribers
-  for insert to anon
-  with check (true);
-```
+Newsletter opt-ins POST to `/api/newsletter/subscribe`, which the Express
+server proxies to the **backend** (`POST /api/newsletter/subscribe`). The
+backend upserts a subscriber that the digest email pipeline actually sends to —
+no Supabase table is involved. Supabase here is only used for reader auth.
 
 ## Getting started
 

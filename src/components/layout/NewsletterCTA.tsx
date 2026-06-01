@@ -1,24 +1,14 @@
 import * as React from "react";
 import { Button } from "@/src/components/ui/Button";
-import { supabase } from "@/src/lib/supabase";
 import { Mail, Check, Loader2 } from "lucide-react";
 
 type Status = "idle" | "loading" | "success" | "error";
 
 /**
- * Captures newsletter sign-ups into the Supabase `subscribers` table, which the
- * backend's SMTP / email-automation step reads from to send the digest.
- *
- * Expected table (create in Supabase SQL editor):
- *   create table public.subscribers (
- *     id uuid primary key default gen_random_uuid(),
- *     email text not null unique,
- *     source text,
- *     created_at timestamptz not null default now()
- *   );
- *   alter table public.subscribers enable row level security;
- *   create policy "anon can subscribe" on public.subscribers
- *     for insert to anon with check (true);
+ * Captures newsletter sign-ups into the backend (proxied via
+ * /api/newsletter/subscribe -> backend POST /api/newsletter/subscribe), which
+ * upserts a subscriber the digest email pipeline (sendDigestToSubscribers)
+ * actually reads from. `source` is kept for analytics/labelling.
  */
 function useNewsletterForm(source: string) {
   const [email, setEmail] = React.useState("");
@@ -32,25 +22,27 @@ function useNewsletterForm(source: string) {
     setStatus("loading");
     setMessage("");
 
-    const { error } = await supabase
-      .from("subscribers")
-      .insert({ email: email.trim().toLowerCase(), source });
+    try {
+      const res = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), source }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    if (error) {
-      // 23505 = unique_violation: already subscribed, treat as success
-      if (error.code === "23505") {
-        setStatus("success");
-        setMessage("You're already on the list — thanks!");
-      } else {
+      if (!res.ok) {
         setStatus("error");
-        setMessage(error.message || "Something went wrong. Please try again.");
+        setMessage(data?.message || "Something went wrong. Please try again.");
+        return;
       }
-      return;
-    }
 
-    setStatus("success");
-    setMessage("You're in! Check your inbox for the next digest.");
-    setEmail("");
+      setStatus("success");
+      setMessage("You're in! Check your inbox for the next digest.");
+      setEmail("");
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please try again.");
+    }
   };
 
   return { email, setEmail, status, message, handleSubmit };
