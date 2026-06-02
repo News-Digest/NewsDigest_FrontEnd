@@ -2,7 +2,7 @@ import * as React from "react";
 import { adminApi } from "@/src/lib/admin/adminApi";
 import type { AdminArticle, ArticleStatus } from "@/src/lib/admin/types";
 import { Button } from "@/src/components/ui/Button";
-import { Loader2, Check, X, Pencil, Save, ExternalLink } from "lucide-react";
+import { Loader2, Check, X, Pencil, Save, ExternalLink, Download } from "lucide-react";
 
 const TABS: ArticleStatus[] = ["PENDING", "APPROVED", "REJECTED"];
 
@@ -11,12 +11,17 @@ export function EditorialReview() {
   const [articles, setArticles] = React.useState<AdminArticle[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = React.useState(false);
+  const [fetching, setFetching] = React.useState(false);
   const [editing, setEditing] = React.useState<AdminArticle | null>(null);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
 
   const load = React.useCallback((s: ArticleStatus) => {
     setLoading(true);
     setError(null);
+    setSelected(new Set());
     adminApi
       .get<AdminArticle[]>(`/articles?status=${s}&limit=100`)
       .then((data) => setArticles(Array.isArray(data) ? data : []))
@@ -27,6 +32,18 @@ export function EditorialReview() {
   React.useEffect(() => {
     load(status);
   }, [status, load]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAll = () =>
+    setSelected((prev) =>
+      prev.size === articles.length ? new Set() : new Set(articles.map((a) => a.id))
+    );
 
   const act = async (id: string, action: "approve" | "reject") => {
     setBusyId(id);
@@ -40,15 +57,53 @@ export function EditorialReview() {
     }
   };
 
+  const bulk = async (action: "approve" | "reject", all = false) => {
+    setBulkBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const body = all
+        ? { action, all: true, status }
+        : { action, ids: Array.from(selected) };
+      const res = await adminApi.post<{ count: number }>("/articles/bulk", body);
+      setNotice(`${action === "approve" ? "Approved" : "Rejected"} ${res.count} article(s).`);
+      load(status);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const fetchNow = async () => {
+    setFetching(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await adminApi.post<any>("/articles/fetch-now");
+      setNotice(res?.message || "Fetch started. New articles will appear shortly.");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const allSelected = articles.length > 0 && selected.size === articles.length;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-black text-gray-900">Editorial Review</h1>
           <p className="text-gray-500 text-sm">
             Triage AI-selected articles before they reach the feed or a digest.
           </p>
         </div>
+        <Button variant="outline" onClick={fetchNow} disabled={fetching}>
+          {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          Fetch now
+        </Button>
       </div>
 
       <div className="flex gap-2">
@@ -65,9 +120,58 @@ export function EditorialReview() {
         ))}
       </div>
 
+      {notice && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {notice}
+        </div>
+      )}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {/* Bulk action toolbar */}
+      {!loading && articles.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="accent-violet-600" />
+            {selected.size > 0 ? `${selected.size} selected` : "Select all"}
+          </label>
+
+          <div className="h-5 w-px bg-gray-200" />
+
+          {status !== "APPROVED" && (
+            <Button
+              size="sm"
+              onClick={() => bulk("approve")}
+              disabled={bulkBusy || selected.size === 0}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Check className="w-4 h-4" /> Approve selected
+            </Button>
+          )}
+          {status !== "REJECTED" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => bulk("reject")}
+              disabled={bulkBusy || selected.size === 0}
+              className="border-red-200 text-red-600 hover:bg-red-50"
+            >
+              <X className="w-4 h-4" /> Reject selected
+            </Button>
+          )}
+
+          {status === "PENDING" && (
+            <>
+              <div className="h-5 w-px bg-gray-200" />
+              <Button size="sm" variant="outline" onClick={() => bulk("approve", true)} disabled={bulkBusy}>
+                {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Approve all pending
+              </Button>
+            </>
+          )}
         </div>
       )}
 
@@ -82,8 +186,20 @@ export function EditorialReview() {
       ) : (
         <div className="space-y-4">
           {articles.map((a) => (
-            <article key={a.id} className="rounded-2xl border border-gray-200 bg-white p-5">
+            <article
+              key={a.id}
+              className={`rounded-2xl border bg-white p-5 transition-colors ${
+                selected.has(a.id) ? "border-violet-400 ring-1 ring-violet-200" : "border-gray-200"
+              }`}
+            >
               <div className="flex gap-4">
+                <input
+                  type="checkbox"
+                  checked={selected.has(a.id)}
+                  onChange={() => toggle(a.id)}
+                  className="mt-1 accent-violet-600"
+                  aria-label="Select article"
+                />
                 {a.imageUrl && (
                   <img
                     src={a.imageUrl}
