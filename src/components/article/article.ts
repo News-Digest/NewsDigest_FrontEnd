@@ -19,4 +19,5 @@ export interface UnifiedArticle {
   // Metadata
   author?: string;
   reading_time?: string;
+  source_url?: string | null;
 }

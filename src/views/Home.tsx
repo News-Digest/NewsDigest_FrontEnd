@@ -7,6 +7,7 @@ import { NewsletterCTA } from "@/src/components/layout/NewsletterCTA";
 import { Button } from "@/src/components/ui/Button";
 import { Loader2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useLanguage } from "@/src/lib/LanguageContext";
 
 const HUB_CATEGORIES = [
   "Technology",
@@ -30,16 +31,18 @@ export function Home() {
   const category = searchParams.get("category") || "Latest";
   const searchTerm = searchParams.get("q") || "";
   const isSearching = searchTerm.length > 0;
+  const { lang } = useLanguage();
 
   const [categoryArticles, setCategoryArticles] = React.useState<{[key: string]: Article[]}>({});
   const [loadingCategories, setLoadingCategories] = React.useState(false);
 
-  const fetchArticles = React.useCallback(async (currentOffset: number, currentCategory: string, q: string = "") => {
+  const fetchArticles = React.useCallback(async (currentOffset: number, currentCategory: string, q: string = "", language: string = "en") => {
     try {
       const params = new URLSearchParams({
         category: currentCategory,
         limit: "10",
         offset: String(currentOffset),
+        language,
       });
       if (q) params.set("q", q);
       const res = await fetch(`/api/articles?${params.toString()}`);
@@ -74,7 +77,7 @@ export function Home() {
       // Fetch categories sequentially with a small delay to avoid overwhelming the API
       for (const cat of HUB_CATEGORIES) {
         try {
-          const res = await fetch(`/api/articles?category=${cat}&limit=4`);
+          const res = await fetch(`/api/articles?category=${cat}&limit=4&language=${lang}`);
           const data = await res.json();
           newCatArticles[cat] = data.articles || [];
           // Small delay between requests
@@ -91,24 +94,24 @@ export function Home() {
     } finally {
       setLoadingCategories(false);
     }
-  }, []);
+  }, [lang]);
 
   React.useEffect(() => {
     setLoading(true);
     setOffset(0);
-    fetchArticles(0, category, searchTerm);
+    fetchArticles(0, category, searchTerm, lang);
     // Only show the category hub on the default Latest view (not while searching)
     if (category === "Latest" && !isSearching) {
       fetchCategoryHub();
     }
-  }, [fetchArticles, fetchCategoryHub, category, searchTerm, isSearching]);
+  }, [fetchArticles, fetchCategoryHub, category, searchTerm, isSearching, lang]);
 
   const handleLoadMore = () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const nextOffset = offset + 10;
     setOffset(nextOffset);
-    fetchArticles(nextOffset, category, searchTerm);
+    fetchArticles(nextOffset, category, searchTerm, lang);
   };
 
   if (loading) {
