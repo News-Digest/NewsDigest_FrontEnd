@@ -177,11 +177,15 @@ export function Home() {
             </div>
           )}
 
-          {(category !== "Latest" || isSearching) && (
+          {(category !== "Latest" || isSearching || articles.length > 0) && (
             <>
               <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
                 <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                  {isSearching ? `Search: "${searchTerm}"` : `${category} News`}
+                  {isSearching
+                    ? `Search: "${searchTerm}"`
+                    : category === "Latest"
+                    ? "More Stories"
+                    : `${category} News`}
                 </h2>
                 <div className="flex gap-4 text-sm font-bold text-gray-400">
                   <button className="text-blue-600 border-b-2 border-blue-600 pb-4 -mb-4">Newest</button>

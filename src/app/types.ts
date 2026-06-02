@@ -10,6 +10,7 @@ export interface Article {
   tags: string[];
   popularity_score: number;
   reading_time: string;
+  source_url?: string | null;
 }
 
 export interface ArticlesResponse {
