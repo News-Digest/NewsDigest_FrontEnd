@@ -76,6 +76,7 @@ function mapArticle(dbArticle: any, fallbackCategory: string) {
     tags: articleTags(dbArticle, fallbackCategory),
     popularity_score: popularityScore(dbArticle),
     reading_time: dbArticle.reading_time || computeReadingTime(content),
+    source_url: dbArticle.sourceUrl || dbArticle.source_url || null,
     // Compatibility fields for some components
     thumbnail: { url: dbArticle.imageUrl || dbArticle.image_url || "" },
     url: `/article/${dbArticle.originalId || dbArticle.id}`,

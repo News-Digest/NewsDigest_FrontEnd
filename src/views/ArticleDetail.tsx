@@ -14,7 +14,8 @@ import {
   Facebook, 
   Linkedin,
   ChevronLeft,
-  Loader2
+  Loader2,
+  ExternalLink
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -130,6 +131,23 @@ export function ArticleDetail() {
             <div className="prose prose-lg max-w-none prose-headings:font-black prose-headings:tracking-tight prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-violet-600 prose-blockquote:border-l-4 prose-blockquote:border-violet-600 prose-blockquote:bg-violet-50 prose-blockquote:p-6 prose-blockquote:rounded-r-xl">
               <ReactMarkdown>{article.content}</ReactMarkdown>
             </div>
+
+            {article.source_url && (
+              <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 px-6 py-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">
+                  Source
+                </p>
+                <a
+                  href={article.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-violet-600 hover:text-violet-700 break-all"
+                >
+                  Read the original article
+                  <ExternalLink className="w-4 h-4 shrink-0" />
+                </a>
+              </div>
+            )}
 
             <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between">
               <div className="flex gap-2">
