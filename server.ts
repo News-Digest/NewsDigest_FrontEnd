@@ -73,6 +73,7 @@ function mapArticle(dbArticle: any, fallbackCategory: string) {
     author: dbArticle.author || "Staff Writer",
     published_at: dbArticle.pubDate || dbArticle.published_at || new Date().toISOString(),
     category: dbArticle.category || fallbackCategory,
+    language: dbArticle.language || "en",
     tags: articleTags(dbArticle, fallbackCategory),
     popularity_score: popularityScore(dbArticle),
     reading_time: dbArticle.reading_time || computeReadingTime(content),
@@ -148,6 +149,7 @@ async function startServer() {
       limit = 10,
       offset = 0,
       q = "",
+      language = "en",
     } = req.query as Record<string, string>;
 
     const limitNum = Number(limit);
@@ -161,6 +163,8 @@ async function startServer() {
       if (category !== "Latest") {
         url.searchParams.append("category", category);
       }
+
+      url.searchParams.append("language", language);
 
       // When searching we need a wider net to filter locally; otherwise fetch
       // exactly enough to cover offset + limit.

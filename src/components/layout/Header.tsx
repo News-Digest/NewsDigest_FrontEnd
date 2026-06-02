@@ -4,6 +4,7 @@ import { Search, Menu, X, Bell, User as UserIcon, LogOut, Settings } from "lucid
 import { Button } from "@/src/components/ui/Button";
 import { cn } from "@/src/lib/utils";
 import { useAuth } from "@/src/lib/AuthContext";
+import { useLanguage, LANGUAGES, type LangCode } from "@/src/lib/LanguageContext";
 
 const categories = [
   "Latest",
@@ -33,6 +34,7 @@ export function Header() {
     ? decodeURIComponent(categoryFromPath[1])
     : searchParams.get("category") || "Latest";
   const { user, signInWithGoogle, logout } = useAuth();
+  const { lang, setLang } = useLanguage();
   const displayName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
@@ -125,6 +127,18 @@ export function Header() {
             <button className="p-2 text-gray-500 hover:text-violet-600 transition-colors hidden sm:block" aria-label="Notifications">
               <Bell className="w-5 h-5" />
             </button>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value as LangCode)}
+              aria-label="Language"
+              className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-600 outline-none hover:border-violet-400 focus:ring-2 focus:ring-violet-100 cursor-pointer"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.code.toUpperCase()}
+                </option>
+              ))}
+            </select>
             
             {user ? (
               <div className="relative">

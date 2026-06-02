@@ -15,15 +15,50 @@ import {
   Linkedin,
   ChevronLeft,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useAuth } from "@/src/lib/AuthContext";
+import { Button } from "@/src/components/ui/Button";
+
+const FREE_ARTICLE_LIMIT = 3;
+const VIEWED_KEY = "nd_viewed_articles";
 
 export function ArticleDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [article, setArticle] = React.useState<Article | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [locked, setLocked] = React.useState(false);
   const [scrollProgress, setScrollProgress] = React.useState(0);
+
+  // Metered paywall: anonymous readers get FREE_ARTICLE_LIMIT articles, then
+  // the body is gated. Signed-in users are unlimited.
+  React.useEffect(() => {
+    if (!article) return;
+    if (user) {
+      setLocked(false);
+      return;
+    }
+    let viewed: string[] = [];
+    try {
+      viewed = JSON.parse(localStorage.getItem(VIEWED_KEY) || "[]");
+    } catch {
+      viewed = [];
+    }
+    if (viewed.includes(article.id)) {
+      setLocked(false); // already counted/read
+      return;
+    }
+    if (viewed.length >= FREE_ARTICLE_LIMIT) {
+      setLocked(true);
+      return;
+    }
+    viewed.push(article.id);
+    localStorage.setItem(VIEWED_KEY, JSON.stringify(viewed));
+    setLocked(false);
+  }, [article, user]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -128,11 +163,50 @@ export function ArticleDetail() {
               />
             </div>
 
-            <div className="prose prose-lg max-w-none prose-headings:font-black prose-headings:tracking-tight prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-violet-600 prose-blockquote:border-l-4 prose-blockquote:border-violet-600 prose-blockquote:bg-violet-50 prose-blockquote:p-6 prose-blockquote:rounded-r-xl">
-              <ReactMarkdown>{article.content}</ReactMarkdown>
-            </div>
+            {locked ? (
+              <div className="relative">
+                {/* Teaser: first slice of the content, fading out */}
+                <div className="prose prose-lg max-w-none prose-p:text-gray-700 prose-p:leading-relaxed max-h-48 overflow-hidden relative">
+                  <ReactMarkdown>{article.content.slice(0, 600)}</ReactMarkdown>
+                  <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
+                </div>
 
-            {article.source_url && (
+                <div className="mt-6 rounded-3xl border border-violet-200 bg-violet-50 p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-violet-600 text-white flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2">
+                    You've reached your free article limit
+                  </h3>
+                  <p className="text-gray-600 max-w-md mx-auto mb-6">
+                    Create a free account to keep reading, or subscribe for unlimited access to
+                    every story and the daily digest.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Link to="/auth?mode=sign-up">
+                      <Button size="lg" className="w-full sm:w-auto">Sign up free</Button>
+                    </Link>
+                    <Link to="/subscription">
+                      <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                        View plans
+                      </Button>
+                    </Link>
+                  </div>
+                  <p className="mt-4 text-xs text-gray-400">
+                    Already have an account?{" "}
+                    <Link to="/auth?mode=sign-in" className="font-semibold text-violet-600 hover:underline">
+                      Sign in
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="prose prose-lg max-w-none prose-headings:font-black prose-headings:tracking-tight prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-violet-600 prose-blockquote:border-l-4 prose-blockquote:border-violet-600 prose-blockquote:bg-violet-50 prose-blockquote:p-6 prose-blockquote:rounded-r-xl">
+                  <ReactMarkdown>{article.content}</ReactMarkdown>
+                </div>
+
+                {article.source_url && (
               <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 px-6 py-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">
                   Source
@@ -168,6 +242,8 @@ export function ArticleDetail() {
                 </button>
               </div>
             </div>
+              </>
+            )}
 
             <NewsletterCTA variant="full" />
           </article>

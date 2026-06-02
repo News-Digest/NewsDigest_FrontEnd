@@ -10,6 +10,7 @@ import { Contact } from "@/src/views/Contact";
 import { Privacy } from "@/src/views/Privacy";
 import { Subscription } from "@/src/views/Subscription";
 import { AdminAuthProvider } from "@/src/lib/admin/AdminAuthContext";
+import { LanguageProvider } from "@/src/lib/LanguageContext";
 import { AdminLayout } from "@/src/views/admin/AdminLayout";
 import { AdminLogin } from "@/src/views/admin/AdminLogin";
 import { AdminDashboard } from "@/src/views/admin/AdminDashboard";
@@ -53,7 +54,7 @@ export default function App() {
           </Route>
 
           {/* Everything else is the public site */}
-          <Route path="/*" element={<PublicSite />} />
+          <Route path="/*" element={<LanguageProvider><PublicSite /></LanguageProvider>} />
         </Routes>
       </AdminAuthProvider>
     </Router>

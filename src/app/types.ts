@@ -11,6 +11,7 @@ export interface Article {
   popularity_score: number;
   reading_time: string;
   source_url?: string | null;
+  language?: string;
 }
 
 export interface ArticlesResponse {
