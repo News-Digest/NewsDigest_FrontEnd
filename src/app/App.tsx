@@ -10,6 +10,7 @@ import { Contact } from "@/src/views/Contact";
 import { Privacy } from "@/src/views/Privacy";
 import { Subscription } from "@/src/views/Subscription";
 import { Profile } from "@/src/views/Profile";
+import { Settings } from "@/src/views/Settings";
 import { AdminAuthProvider } from "@/src/lib/admin/AdminAuthContext";
 import { LanguageProvider } from "@/src/lib/LanguageContext";
 import { AdminLayout } from "@/src/views/admin/AdminLayout";
@@ -30,6 +31,7 @@ function PublicSite() {
           <Route path="/category/:category" element={<CategoryPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
