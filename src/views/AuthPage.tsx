@@ -18,6 +18,7 @@ export function AuthPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const navigate = useNavigate();
+  const redirectTo = searchParams.get("redirect") || "/";
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -36,7 +37,7 @@ export function AuthPage() {
       } else {
         await signInWithEmail(email, password);
       }
-      navigate("/");
+      navigate(redirectTo);
     } catch (err: any) {
       setError(err?.message || "Authentication failed. Please try again.");
     } finally {
@@ -58,7 +59,7 @@ export function AuthPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      navigate("/");
+      navigate(redirectTo);
     } catch (err: any) {
       setError(err?.message || "Google sign-in failed.");
     } finally {

@@ -1,6 +1,8 @@
-import { Link } from "react-router-dom";
+import * as React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/src/components/ui/Button";
-import { ArrowRight, Check } from "lucide-react";
+import { Check } from "lucide-react";
+import { useAuth } from "@/src/lib/AuthContext";
 
 const plans = [
   {
@@ -41,8 +43,32 @@ const plans = [
 ];
 
 export function Subscription() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [notice, setNotice] = React.useState<string | null>(null);
+
+  const handleSelect = (planName: string) => {
+    if (!user) {
+      // Not signed in: send them to auth (sign-in by default, with a toggle to
+      // sign up) and bring them back here afterwards — don't force sign-up.
+      navigate(`/auth?mode=sign-in&redirect=/subscription`);
+      return;
+    }
+    // Signed in: real Stripe checkout requires the backend's own auth (deferred),
+    // so for now confirm and tell them checkout is on the way.
+    setNotice(
+      `You're signed in as ${user.email}. Secure checkout is launching soon — we'll let you know the moment your ${planName} plan is ready.`
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <main className="container mx-auto px-4 lg:px-8 py-16">
+      {notice && (
+        <div className="max-w-3xl mx-auto mb-10 rounded-2xl border border-violet-200 bg-violet-50 px-6 py-4 text-center text-sm font-medium text-violet-800">
+          {notice}
+        </div>
+      )}
       <div className="max-w-3xl mx-auto text-center mb-16">
         <p className="text-sm uppercase tracking-[0.3em] text-violet-600 font-bold mb-4">
           Premium Subscription
@@ -84,15 +110,14 @@ export function Subscription() {
               ))}
             </ul>
 
-            <Link to="/auth?mode=sign-up" className="block">
-              <Button
-                variant={plan.highlight ? "primary" : "outline"}
-                size="lg"
-                className="w-full"
-              >
-                Start {plan.name}
-              </Button>
-            </Link>
+            <Button
+              variant={plan.highlight ? "primary" : "outline"}
+              size="lg"
+              className="w-full"
+              onClick={() => handleSelect(plan.name)}
+            >
+              {user ? `Choose ${plan.name}` : `Get started`}
+            </Button>
           </section>
         ))}
       </div>
