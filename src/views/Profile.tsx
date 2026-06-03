@@ -3,6 +3,7 @@ import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/src/lib/AuthContext";
 import { supabase } from "@/src/lib/supabase";
 import { Button } from "@/src/components/ui/Button";
+import { AccountTabs } from "@/src/components/layout/AccountTabs";
 import { Loader2, Check, LogOut, Mail, Calendar, ShieldCheck, ArrowRight } from "lucide-react";
 
 export function Profile() {
@@ -70,6 +71,7 @@ export function Profile() {
   return (
     <main className="container mx-auto px-4 lg:px-8 py-12 max-w-3xl">
       <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-8">Your account</h1>
+      <AccountTabs />
 
       {/* Identity card */}
       <section className="rounded-3xl border border-gray-200 bg-white p-8 mb-6">
