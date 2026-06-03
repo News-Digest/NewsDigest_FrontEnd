@@ -155,13 +155,25 @@ export function Header() {
                       <div className="text-sm font-bold text-gray-900 truncate">{displayName}</div>
                       <div className="text-xs text-gray-500 truncate">{user.email}</div>
                     </div>
-                    <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        navigate("/profile");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
                       <UserIcon className="w-4 h-4" /> Profile
                     </button>
-                    <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        navigate("/profile");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
                       <Settings className="w-4 h-4" /> Settings
                     </button>
-                    <button 
+                    <button
                       onClick={() => logout()}
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
