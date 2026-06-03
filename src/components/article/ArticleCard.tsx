@@ -1,41 +1,8 @@
 import { Link } from "react-router-dom"; // Swap for 'next/link' if using Next.js
-import { Clock, ExternalLink } from "lucide-react";
+import { Clock, ArrowRight } from "lucide-react";
 import { Badge } from "@/src/components/ui/Badge";
 import { formatDate, cn } from "@/src/lib/utils";
 import { UnifiedArticle } from "./article";
-
-/**
- * Small "Source" affordance for a card. The whole card is a <Link>, so this
- * uses a span (not a nested <a>) and stops propagation to open the original
- * source without triggering the card navigation.
- */
-function SourceLink({ url, className }: { url?: string | null; className?: string }) {
-  if (!url) return null;
-  return (
-    <span
-      role="link"
-      tabIndex={0}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        window.open(url, "_blank", "noopener,noreferrer");
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          e.stopPropagation();
-          window.open(url, "_blank", "noopener,noreferrer");
-        }
-      }}
-      className={cn(
-        "inline-flex items-center gap-1 font-semibold text-violet-600 hover:text-violet-700 cursor-pointer",
-        className
-      )}
-    >
-      Source <ExternalLink className="w-3 h-3" />
-    </span>
-  );
-}
 
 interface ArticleCardProps {
   article: UnifiedArticle;
@@ -106,14 +73,11 @@ export function ArticleCard({ article, variant = "medium", className }: ArticleC
           <Badge variant="outline" className="w-fit mb-2 text-[10px] uppercase">{category}</Badge>
           <h2 className="text-sm md:text-base font-bold text-gray-900 mb-2 group-hover:text-violet-600 transition-colors line-clamp-2">{title}</h2>
           <p className="text-xs md:text-sm text-gray-600 line-clamp-2">{description}</p>
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+          <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400 font-medium">
             <span>{formatDate(date)}</span>
-            {article.source_url && (
-              <>
-                <span>•</span>
-                <SourceLink url={article.source_url} className="text-[11px]" />
-              </>
-            )}
+            <span className="inline-flex items-center gap-1 font-bold text-violet-600 group-hover:gap-2 transition-all">
+              Read more <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
         </div>
       </Link>
@@ -152,16 +116,15 @@ export function ArticleCard({ article, variant = "medium", className }: ArticleC
           </p>
         )}
 
-        <div className="mt-auto flex items-center gap-3 text-xs text-gray-400">
-          <span className="font-semibold text-gray-700">{author}</span>
-          <span>•</span>
-          <span>{formatDate(date)}</span>
-          {article.source_url && (
-            <>
-              <span>•</span>
-              <SourceLink url={article.source_url} className="text-xs" />
-            </>
-          )}
+        <div className="mt-auto flex items-center justify-between gap-3 pt-2 text-xs text-gray-400">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-semibold text-gray-700 truncate">{author}</span>
+            <span>•</span>
+            <span className="whitespace-nowrap">{formatDate(date)}</span>
+          </div>
+          <span className="inline-flex items-center gap-1 font-bold text-violet-600 group-hover:gap-2 transition-all whitespace-nowrap">
+            Read more <ArrowRight className="w-3.5 h-3.5" />
+          </span>
         </div>
       </div>
     </Link>
