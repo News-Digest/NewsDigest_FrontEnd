@@ -3,6 +3,9 @@ import * as React from "react";
 export const LANGUAGES = [
   { code: "en", label: "English" },
   { code: "fi", label: "Suomi" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "sv", label: "Svenska" },
 ] as const;
 
 export type LangCode = (typeof LANGUAGES)[number]["code"];
